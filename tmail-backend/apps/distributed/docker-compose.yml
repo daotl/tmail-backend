@@ -3,6 +3,8 @@ version: '3'
 networks:
   emaily:
     driver: bridge
+  web:
+    external: true
 
 services:
   james:
@@ -16,51 +18,90 @@ services:
     container_name: james
     hostname: james.local
     ports:
-      - "80:80"     # JMAP
-      - "25:25"     # SMTP without authentication
-      - "110:110"   # POP3
-      - "143:143"   # IMAP
+      # - "80:80"     # JMAP
+      # - "25:25"     # SMTP without authentication
+      # - "110:110"   # POP3
+      # - "143:143"   # IMAP
       - "465:465"   # SMTP with authentication and socketTLS enabled
       - "587:587"   # SMTP with authentication and startTLS enabled
       - "993:993"   # IMAP with socketTLS enabled
-      - "8000:8000" # Web Admin interface (unsecured: expose at your own risks)
+      # - "8000:8000" # Web Admin interface (unsecured: expose at your own risks)
     networks:
       - emaily
+      - web
+    expose:
+      - 80
+      - 25
+      - 110
+      - 143
+      - 465
+      - 587
+      - 993
+      - 8000
     # environment:
     #   - JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m -javaagent:/root/glowroot/glowroot.jar
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.jamesJmap.entryPoints: web
+      traefik.http.routers.jamesJmap.tls.certResolver: default
+      traefik.http.routers.jamesJmap.rule: Host(`mail.internetapi.cn`) && PathPrefix(`/jmap{path:$$|/}`)
+      traefik.http.routers.jamesJmap.middlewares: jamesJmapAddCors
+      traefik.http.routers.jamesJmap.service: jamesJmap
+      traefik.http.middlewares.jamesJmapAddCors.headers.accessControlAllowMethods: OPTIONS,GET,POST,PUT,DELETE,PATCH
+      traefik.http.middlewares.jamesJmapAddCors.headers.accessControlAllowOriginList: https://openpaas.internetapi.cn
+      traefik.http.middlewares.jamesJmapAddCors.headers.accessControlAllowHeaders: Content-Type,Authorization,Accept
+      # traefik.http.middlewares.jamesJmapAddCors.headers.accessControlMaxAge: 100
+      # traefik.http.middlewares.jamesJmapAddCors.headers.addVaryHeader: "true"
+      traefik.http.services.jamesJmap.loadbalancer.server.port: 80
+      traefik.http.routers.jamesWebAdmin.entryPoints: jamesWebAdmin
+      traefik.http.routers.jamesWebAdmin.tls.certResolver: default
+      traefik.http.routers.jamesWebAdmin.rule: Host(`mail.internetapi.cn`)
+      # traefik.http.routers.jamesWebAdmin.middlewares: jamesWebAdminAuth
+      traefik.http.routers.jamesWebAdmin.service: jamesWebAdmin
+      # traefik.http.middlewares.jamesWebAdminAuth.basicAuth.users: ""
+      traefik.http.services.jamesWebAdmin.loadbalancer.server.port: 8000
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
     volumes:
       - tmail_elasticsearch_data:/usr/share/elasticsearch/data
-    environment:
-      - discovery.type=single-node
     networks:
       - emaily
+    expose:
+      - 9200
+    environment:
+      - discovery.type=single-node
 
   cassandra:
     image: cassandra:3.11.10
     volumes:
       - tmail_cassandra_data:/var/lib/cassandra
-    ports:
-      - "9042:9042"
+    # ports:
+    #   - "9042:9042"
     networks:
       - emaily
+    expose:
+      - 9042
 
   tika:
     image: apache/tika:1.24
     networks:
       - emaily
+    expose:
+      - 9998
 
   rabbitmq:
     image: rabbitmq:3.8.17-management
     volumes:
       - tmail_rabbitmq_data:/var/lib/rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    # ports:
+    #   - "5672:5672"
+    #   - "15672:15672"
     networks:
       - emaily
+    expose:
+      - 5672
+      - 15672
 
   s3:
     image: zenko/cloudserver:8.2.6
@@ -77,6 +118,8 @@ services:
       # - REMOTE_MANAGEMENT_DISABLE=1
     networks:
       - emaily
+    expose:
+      - 8000
 
 volumes:
   tmail_elasticsearch_data:
