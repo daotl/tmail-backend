@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
+<!-- Reference: https://github.com/linagora/openpaas-esn/blob/801f1eab97ddd94d91caba8a35202d86fe8aea7b/docker/config/james/pop3server.xml -->
 <!--
   Licensed to the Apache Software Foundation (ASF) under one   
   or more contributor license agreements.  See the NOTICE file 
@@ -18,11 +19,25 @@
   under the License.                                           
  -->
 
-<!-- Read https://james.apache.org/server/config-domainlist.html for further details -->
 
-<domainlist>
-    <autodetect>false</autodetect>
-    <autodetectIP>false</autodetectIP>
-    <!-- <defaultDomain>localhost</defaultDomain> -->
-    <defaultDomain>internetapi.cn</defaultDomain>
-</domainlist>
+<pop3servers>
+    <pop3server enabled="false">
+        <jmxName>pop3server</jmxName>
+        <bind>0.0.0.0:110</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="false">
+            <!-- To create a new keystore execute:
+                  keytool -genkey -alias james -keyalg RSA -keystore /path/to/james/conf/keystore
+             -->
+            <keystore>file://conf/keystore</keystore>
+            <secret>james72laBalle</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+        </tls>
+        <connectiontimeout>1200</connectiontimeout>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <handlerchain>
+            <handler class="org.apache.james.pop3server.core.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </pop3server>
+</pop3servers>

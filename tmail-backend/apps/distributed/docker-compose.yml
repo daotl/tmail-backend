@@ -17,6 +17,8 @@ services:
     image: linagora/tmail-backend:distributed-0.4.0
     container_name: james
     hostname: james.local
+    volumes:
+      - ./src/main/conf/:/root/conf
     ports:
       # - "80:80"     # JMAP
       # - "25:25"     # SMTP without authentication
@@ -32,7 +34,7 @@ services:
     expose:
       - 80
       - 25
-      - 110
+      # - 110
       - 143
       - 465
       - 587

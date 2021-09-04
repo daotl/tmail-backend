@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-
+<!-- Reference: https://github.com/linagora/openpaas-esn/blob/801f1eab97ddd94d91caba8a35202d86fe8aea7b/docker/config/james/smtpserver.xml# -->
 <!--
   Licensed to the Apache Software Foundation (ASF) under one
   or more contributor license agreements.  See the NOTICE file
@@ -36,9 +36,13 @@
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
         <authRequired>false</authRequired>
-        <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
+        <!-- <authorizedAddresses>127.0.0.0/8</authorizedAddresses> -->
+        <authorizedAddresses>0.0.0.0/0</authorizedAddresses>
         <verifyIdentity>false</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!--
+           Define maxmessagesize as 25MiB (expressed in Kib)
+        -->
+        <maxmessagesize>25600</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
         <handlerchain>
@@ -59,14 +63,14 @@
         <connectiontimeout>360</connectiontimeout>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
-        <!--
-           Authorize only local users
-        -->
         <authRequired>true</authRequired>
         <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
-        <!-- Trust authenticated users -->
-        <verifyIdentity>false</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!-- <verifyIdentity>false</verifyIdentity> -->
+        <verifyIdentity>true</verifyIdentity>
+        <!--
+           Define maxmessagesize as 25MiB (expressed in Kib)
+        -->
+        <maxmessagesize>25600</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
         <handlerchain>
@@ -87,14 +91,14 @@
         <connectiontimeout>360</connectiontimeout>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
-        <!--
-           Authorize only local users
-        -->
         <authRequired>true</authRequired>
         <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
-        <!-- Trust authenticated users -->
-        <verifyIdentity>false</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!-- <verifyIdentity>false</verifyIdentity> -->
+        <verifyIdentity>true</verifyIdentity>
+        <!--
+           Define maxmessagesize as 25MiB (expressed in Kib)
+        -->
+        <maxmessagesize>25600</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
         <handlerchain>
@@ -103,5 +107,3 @@
         </handlerchain>
     </smtpserver>
 </smtpservers>
-
-

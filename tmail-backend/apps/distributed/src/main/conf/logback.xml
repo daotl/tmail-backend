@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Reference: https://github.com/linagora/openpaas-esn/blob/801f1eab97ddd94d91caba8a35202d86fe8aea7b/docker/config/james/logback.xml -->
 <configuration>
 
         <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
@@ -12,7 +13,7 @@
                 </encoder>
         </appender>
 
-        <appender name="LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- <appender name="LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
                 <file>/logs/james.log</file>
                 <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
                     <fileNamePattern>/logs/james.%i.log.tar.gz</fileNamePattern>
@@ -28,11 +29,11 @@
                         <pattern>%d{HH:mm:ss.SSS} [%-5level] %logger{15} - %msg%n%rEx</pattern>
                         <immediateFlush>false</immediateFlush>
                 </encoder>
-        </appender>
+        </appender> -->
 
-        <root level="WARN">
+        <root level="INFO">
                 <appender-ref ref="CONSOLE" />
-                <appender-ref ref="LOG_FILE" />
+                <!-- <appender-ref ref="LOG_FILE" /> -->
         </root>
 
         <logger name="org.apache.james" level="INFO" />

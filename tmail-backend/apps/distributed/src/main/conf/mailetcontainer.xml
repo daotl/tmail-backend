@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-
+<!-- Reference: https://github.com/linagora/openpaas-esn/blob/801f1eab97ddd94d91caba8a35202d86fe8aea7b/docker/config/james/mailetcontainer.xml -->
 <!--
   Licensed to the Apache Software Foundation (ASF) under one
   or more contributor license agreements.  See the NOTICE file
@@ -37,9 +37,28 @@
     <processors>
         <processor state="root" enableJmx="true">
             <mailet match="All" class="PostmasterAlias"/>
+            <mailet match="SizeGreaterThan=25m" class="ToProcessor">
+                <processor>sizeLimitExceeded</processor>
+            </mailet>
             <mailet match="RelayLimit=30" class="Null"/>
+            <mailet match="dlp.Dlp" class="ToProcessor">
+                 <processor>dlpQuarantine</processor>
+                 <onMatcherException>dlpQuarantine</onMatcherException>
+            </mailet>
             <mailet match="All" class="ToProcessor">
                 <processor>transport</processor>
+            </mailet>
+        </processor>
+
+        <processor state="dlpQuarantine" enableJmx="true">
+            <mailet match="All" class="ToSenderDomainRepository">
+                 <urlPrefix>cassandra://var/mail/dlp/quarantine/</urlPrefix>
+            </mailet>
+        </processor>
+
+        <processor state="dlpReject" enableJmx="true">
+            <mailet match="All" class="ToSenderDomainRepository">
+                 <urlPrefix>cassandra://var/mail/dlp/rejected/</urlPrefix>
             </mailet>
         </processor>
 
@@ -54,54 +73,105 @@
             </mailet>
         </processor>
 
-        <processor state="transport" enableJmx="true">
-            <matcher name="relay-allowed" match="org.apache.james.mailetcontainer.impl.matchers.Or">
-                <matcher match="SMTPAuthSuccessful"/>
-                <matcher match="SMTPIsAuthNetwork"/>
-                <matcher match="SentByMailet"/>
-                <matcher match="org.apache.james.jmap.mailet.SentByJmap"/>
-            </matcher>
+        <processor state="sizeLimitExceeded" enableJmx="true">
+            <mailet match="All" class="DSNBounce">
+                <attachment>none</attachment>
+                <messageString>The mail has not been delivered because it exceeds the maximum size allowed (25MiB)</messageString>
+                <passThrough>false</passThrough>
+            </mailet>
+        </processor>
 
+        <processor state="transport" enableJmx="true">
+            <matcher name="mdn-matcher" match="org.apache.james.mailetcontainer.impl.matchers.And">
+                <matcher match="HasMimeType=multipart/report"/>
+                <matcher match="HasMimeTypeParameter=report-type=disposition-notification"/>
+            </matcher>
+            <mailet match="SMTPAuthSuccessful" class="SetMimeHeader">
+                <name>X-UserIsAuth</name>
+                <value>true</value>
+            </mailet>
+            <mailet match="HasMailAttribute=org.apache.james.SMIMECheckSignature" class="SetMimeHeader">
+                <name>X-WasSigned</name>
+                <value>true</value>
+            </mailet>
+            <mailet match="IsOverQuota" class="ToProcessor">
+                <processor>over-quota</processor>
+            </mailet>
+            <!-- Beginning of contact pipeline -->
+            <mailet match="SenderIsLocal" class="ContactExtractor">
+                <attribute>extractedContacts</attribute>
+            </mailet>
+            <mailet match="All" class="AmqpForwardAttribute">
+                <uri>amqp://rabbitmq:5672</uri>
+                <exchange>collector:email</exchange>
+                <attribute>extractedContacts</attribute>
+            </mailet>
+            <!-- End of contact pipeline -->
             <mailet match="All" class="RemoveMimeHeader">
                 <name>bcc</name>
+            </mailet>
+            <mailet match="All" class="RemoveMimeHeader">
+                <name>X-MEETING-UID,X-MEETING-METHOD,X-MEETING-RECURRENCE-ID,X-MEETING-SEQUENCE,X-MEETING-DTSTAMP</name>
+            </mailet>
+            <mailet match="All" class="RecipientRewriteTable" />
+            <mailet match="RecipientIsLocal" class="org.apache.james.jmap.mailet.VacationMailet"/>
+            <mailet match="RecipientIsLocal" class="org.apache.james.jmap.mailet.filter.JMAPFiltering"/>
+            <mailet match="mdn-matcher" class="org.apache.james.jmap.mailet.ExtractMDNOriginalJMAPMessageId">
                 <onMailetException>ignore</onMailetException>
             </mailet>
-            <mailet match="All" class="RecipientRewriteTable">
-                <errorProcessor>rrt-error</errorProcessor>
-            </mailet>
             <mailet match="RecipientIsLocal" class="ToProcessor">
-                <processor>local-delivery</processor>
+                <processor>local-recipient</processor>
             </mailet>
+            <!--
             <mailet match="HostIsLocal" class="ToProcessor">
                 <processor>local-address-error</processor>
                 <notice>550 - Requested action not taken: no such user here</notice>
             </mailet>
-            <mailet match="relay-allowed" class="ToProcessor">
-                <processor>relay</processor>
+            -->
+            <mailet match="SMTPAuthSuccessful" class="RemoteDelivery">
+                <outgoingQueue>outgoing</outgoingQueue>
+                <delayTime>5000, 100000, 500000</delayTime>
+                <maxRetries>25</maxRetries>
+                <maxDnsProblemRetries>0</maxDnsProblemRetries>
+                <deliveryThreads>10</deliveryThreads>
+                <sendpartial>true</sendpartial>
+                <bounceProcessor>bounces</bounceProcessor>
             </mailet>
             <mailet match="All" class="ToProcessor">
                 <processor>relay-denied</processor>
             </mailet>
         </processor>
 
-        <processor state="local-delivery" enableJmx="true">
-            <mailet match="All" class="org.apache.james.jmap.mailet.VacationMailet"/>
-            <mailet match="All" class="Sieve"/>
-            <mailet match="All" class="AddDeliveredToHeader"/>
-            <mailet match="All" class="org.apache.james.jmap.mailet.filter.JMAPFiltering"/>
-            <mailet match="All" class="LocalDelivery"/>
-        </processor>
-
-        <processor state="relay" enableJmx="true">
-            <mailet match="All" class="RemoteDelivery">
-                <outgoingQueue>outgoing</outgoingQueue>
-                <delayTime>5000, 100000, 500000</delayTime>
-                <maxRetries>3</maxRetries>
-                <maxDnsProblemRetries>0</maxDnsProblemRetries>
-                <deliveryThreads>10</deliveryThreads>
-                <sendpartial>true</sendpartial>
-                <bounceProcessor>bounces</bounceProcessor>
+        <processor state="local-recipient" enableJmx="true">
+            <!-- ICAL pipeline -->
+            <mailet match="All" class="StripAttachment">
+                <mimeType>text/calendar</mimeType>
+                <attribute>rawIcalendar</attribute>
             </mailet>
+            <mailet match="All" class="MimeDecodingMailet">
+                <attribute>rawIcalendar</attribute>
+            </mailet>
+            <mailet match="All" class="ICalendarParser">
+                <sourceAttribute>rawIcalendar</sourceAttribute>
+                <destinationAttribute>icalendar</destinationAttribute>
+            </mailet>
+            <mailet match="All" class="ICALToHeader">
+                <attribute>icalendar</attribute>
+            </mailet>
+            <mailet match="RecipientIsLocal" class="LogMessage"/>
+            <mailet match="All" class="ICALToJsonAttribute">
+                <source>icalendar</source>
+                <destination>icalendarAsJson</destination>
+                <rawSource>rawIcalendar</rawSource>
+            </mailet>
+            <mailet match="All" class="AmqpForwardAttribute">
+                <uri>amqp://rabbitmq:5672</uri>
+                <exchange>james:events</exchange>
+                <attribute>icalendarAsJson</attribute>
+            </mailet>
+            <!-- End of ICAL pipeline -->
+            <mailet match="All" class="AddDeliveredToHeader"/>
+            <mailet match="All" class="LocalDelivery"/>
         </processor>
 
         <processor state="local-address-error" enableJmx="true">
@@ -138,17 +208,19 @@
             </mailet>
         </processor>
 
-        <processor state="rrt-error" enableJmx="false">
-            <mailet match="All" class="ToRepository">
-                <repositoryPath>cassandra://var/mail/rrt-error/</repositoryPath>
-                <passThrough>true</passThrough>
+        <processor state="over-quota" enableJmx="true">
+            <mailet match="All" class="MetricsMailet">
+                <metricName>mailet-over-quota-error</metricName>
             </mailet>
-            <mailet match="IsSenderInRRTLoop" class="Null"/>
-            <mailet match="All" class="Bounce"/>
+            <mailet match="All" class="Bounce">
+                <message>The following recipients do not have enough space for storing the email you sent them.</message>
+                <attachment>none</attachment>
+            </mailet>
+            <mailet match="All" class="ToRepository">
+                <repositoryPath>cassandra://var/mail/over-quota-error/</repositoryPath>
+            </mailet>
         </processor>
 
     </processors>
 
 </mailetcontainer>
-
-
