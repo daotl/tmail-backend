@@ -64,7 +64,7 @@ services:
       traefik.http.services.jamesWebAdmin.loadbalancer.server.port: 8000
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    image: elasticsearch:7.14.1
     volumes:
       - tmail_elasticsearch_data:/usr/share/elasticsearch/data
     networks:
@@ -117,7 +117,7 @@ services:
       - S3DATAPATH=/usr/src/app/localData
       - S3METADATAPATH=/usr/src/app/localMetadata
       # - LOG_LEVEL=trace
-      # - REMOTE_MANAGEMENT_DISABLE=1
+      - REMOTE_MANAGEMENT_DISABLE=1
     networks:
       - emaily
     expose:
