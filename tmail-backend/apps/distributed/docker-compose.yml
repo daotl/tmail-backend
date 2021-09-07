@@ -20,7 +20,7 @@ services:
     volumes:
       - ./src/main/conf/:/root/conf
     ports:
-      # - "80:80"     # JMAP
+      - "80:80"     # JMAP
       # - "25:25"     # SMTP without authentication
       # - "110:110"   # POP3
       # - "143:143"   # IMAP
